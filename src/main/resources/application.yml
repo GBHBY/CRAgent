@@ -1,0 +1,67 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+spring:
+  ai:
+    openai:
+      api-key: @dashscope.api.key@
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.3
+          maxTokens: 8000
+
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/gitlab_cr?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 60000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+
+  mybatis-plus:
+    mapper-locations: classpath:mapper/*.xml
+
+# GitLab 配置
+gitlab:
+  api:
+    url: https://gitlab.example.com
+    private-token: your-gitlab-token
+  webhook:
+    secret-token: your-webhook-secret
+  review:
+    target-branches: pre-release,main
+
+# 钉钉配置
+dingtalk:
+  webhook:
+    url: https://oapi.dingtalk.com/robot/send?access_token=xxx
+    secret: SECxxx
+
+# Notion MCP 配置
+notion:
+  mcp:
+    url: https://mcp.notion.com/mcp
+    api-key: your-notion-api-key
+  database-id: your-notion-database-id
+
+# Skill 配置
+skill:
+  refresh-interval: 300000
+  storage-path: ./skills
+
+logging:
+  level:
+    cn.hollis.llm.cr.agent: DEBUG
+    org.springframework.ai: INFO
+    io.modelcontextprotocol.client: ERROR
