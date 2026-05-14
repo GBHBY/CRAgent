@@ -51,7 +51,7 @@ public class WebhookController {
      */
     @PostMapping("/gitlab")
     public ResponseEntity<String> handleGitLabWebhook(@RequestBody String payload) {
-
+            ///232323232
         log.info("收到 GitLab webhook 事件{}", payload);
 
         // 验证 Webhook 密钥令牌
