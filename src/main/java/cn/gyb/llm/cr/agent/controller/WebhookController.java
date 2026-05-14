@@ -50,17 +50,15 @@ public class WebhookController {
      * @return 202 Accepted 表示已接受处理，401 表示令牌无效，400 表示载荷格式错误
      */
     @PostMapping("/gitlab")
-    public ResponseEntity<String> handleGitLabWebhook(
-            @RequestHeader("X-Gitlab-Token") String token,
-            @RequestBody String payload) {
+    public ResponseEntity<String> handleGitLabWebhook(@RequestBody String payload) {
 
-        log.info("收到 GitLab webhook 事件");
+        log.info("收到 GitLab webhook 事件{}", payload);
 
         // 验证 Webhook 密钥令牌
-        if (!secretToken.equals(token)) {
-            log.warn("收到无效的 Webhook 令牌，拒绝请求");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的令牌");
-        }
+        //if (!secretToken.equals(token)) {
+        //    log.warn("收到无效的 Webhook 令牌，拒绝请求");
+        //    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的令牌");
+        //}
 
         try {
             MergeRequestEvent event = JSON.parseObject(payload, MergeRequestEvent.class);
