@@ -15,14 +15,14 @@ public class SkillRefreshScheduler {
     @Autowired
     private SkillService skillService;
 
-    @Scheduled(fixedDelayString = "${skill.refresh-interval:300000}")
-    public void refreshAllSkills() {
-        log.info("开始定时刷新技能...");
-        try {
-            skillService.refreshAllSkills();
-            log.info("定时刷新技能完成");
-        } catch (Exception e) {
-            log.error("定时刷新技能失败: {}", e.getMessage(), e);
-        }
-    }
+    //@Scheduled(fixedDelayString = "${skill.refresh-interval:300000}")
+    //public void refreshAllSkills() {
+    //    log.info("开始定时刷新技能...");
+    //    try {
+    //        skillService.refreshAllSkills();
+    //        log.info("定时刷新技能完成");
+    //    } catch (Exception e) {
+    //        log.error("定时刷新技能失败: {}", e.getMessage(), e);
+    //    }
+    //}
 }

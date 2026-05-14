@@ -175,7 +175,7 @@ public class ReviewServiceImpl implements ReviewService {
         String sourceBranch = String.valueOf(mrInfo.getOrDefault("source_branch", ""));
         String targetBranch = String.valueOf(mrInfo.getOrDefault("target_branch", ""));
         String author = mrInfo.get("author") instanceof Map<?, ?> m
-                ? String.valueOf(m.getOrDefault("name", "未知"))
+                ? String.valueOf(m.get("name") != null ? m.get("name") : "未知")
                 : "未知";
         String projectName = String.valueOf(projectId);
 
