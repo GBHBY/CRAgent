@@ -32,6 +32,10 @@ spring:
   mybatis-plus:
     mapper-locations: classpath:mapper/*.xml
 
+# Webhook 平台配置 (支持: gitlab, github)
+webhook:
+  platform: gitlab
+
 # GitLab 配置
 gitlab:
   api:
