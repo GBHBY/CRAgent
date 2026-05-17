@@ -1,24 +1,44 @@
 package cn.gyb.llm.cr.agent.webhook;
 
+import cn.gyb.llm.cr.agent.dto.github.GitHubPullRequestEvent;
 import cn.gyb.llm.cr.agent.entity.record.MergeRequestEvent;
-import com.alibaba.fastjson2.JSONObject;
+import cn.gyb.llm.cr.agent.service.GitHubApiService;
+import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * GitHub Webhook 处理器
  * <p>
  * 解析 GitHub 平台的 Pull Request Webhook 事件，
- * 将其转换为统一的 MergeRequestEvent 模型。
+ * 拉取对应 PR 的 unified diff 并保存到本地 diff 目录，
+ * 最终将本地文件路径写入统一的 MergeRequestEvent 模型。
  */
 @Slf4j
 @Component
 public class GitHubWebhookHandler implements WebhookHandler {
 
-    /** 支持的 PR 操作类型 */
     private static final Set<String> SUPPORTED_ACTIONS = Set.of("opened", "synchronize", "reopened");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    @Autowired
+    private GitHubApiService gitHubApiService;
+
+    /** diff 文件本地存储目录，默认为项目根目录下的 diff 文件夹 */
+    @Value("${github.diff.local-dir:./diff}")
+    private String diffLocalDir;
 
     @Override
     public String platformType() {
@@ -37,63 +57,55 @@ public class GitHubWebhookHandler implements WebhookHandler {
 
     @Override
     public MergeRequestEvent parseEvent(String payload) {
-        JSONObject json = JSONObject.parseObject(payload);
+        GitHubPullRequestEvent event = JSON.parseObject(payload, GitHubPullRequestEvent.class);
 
-        String action = json.getString("action");
-        JSONObject pullRequest = json.getJSONObject("pull_request");
+        GitHubPullRequestEvent.PullRequest pr = event.getPullRequest();
 
-        // 必须包含 pull_request 字段
-        if (pullRequest == null) {
+        if (pr == null) {
             log.debug("忽略非 pull_request 事件");
             return null;
         }
 
-        // 检查操作类型
+        String action = event.getAction();
+
         if (!SUPPORTED_ACTIONS.contains(action)) {
             log.debug("忽略操作为 {} 的 Pull Request", action);
             return null;
         }
 
-        String state = pullRequest.getString("state");
-
-        // 只处理 open 状态的 PR
-        if (!"open".equals(state)) {
-            log.debug("忽略状态为 {} 的 Pull Request", state);
+        if (!"open".equals(pr.getState())) {
+            log.debug("忽略状态为 {} 的 Pull Request", pr.getState());
             return null;
         }
 
-        // 映射为统一的 action 格式
         String normalizedAction = normalizeAction(action);
 
-        // 提取分支信息
-        JSONObject head = pullRequest.getJSONObject("head");
-        JSONObject base = pullRequest.getJSONObject("base");
-        String sourceBranch = head != null ? head.getString("ref") : null;
-        String targetBranch = base != null ? base.getString("ref") : null;
+        String sourceBranch = Optional.ofNullable(pr.getHead()).map(GitHubPullRequestEvent.BranchRef::getRef).orElse(null);
+        String targetBranch = Optional.ofNullable(pr.getBase()).map(GitHubPullRequestEvent.BranchRef::getRef).orElse(null);
 
-        // 提取仓库信息
-        JSONObject repository = json.getJSONObject("repository");
-        Long repoId = repository != null ? repository.getLong("id") : null;
-        String fullName = repository != null ? repository.getString("full_name") : null;
-        String htmlUrl = repository != null ? repository.getString("html_url") : null;
-        String repoName = repository != null ? repository.getString("name") : null;
+        GitHubPullRequestEvent.Repository repo = event.getRepository();
+        Long repoId = Optional.ofNullable(repo).map(GitHubPullRequestEvent.Repository::getId).orElse(null);
+        String fullName = Optional.ofNullable(repo).map(GitHubPullRequestEvent.Repository::getFullName).orElse(null);
+        String htmlUrl = Optional.ofNullable(repo).map(GitHubPullRequestEvent.Repository::getHtmlUrl).orElse(null);
+        String repoName = Optional.ofNullable(repo).map(GitHubPullRequestEvent.Repository::getName).orElse(null);
 
-        // 提取用户信息
-        JSONObject sender = json.getJSONObject("sender");
-        Long userId = sender != null ? sender.getLong("id") : null;
-        String username = sender != null ? sender.getString("login") : null;
+        GitHubPullRequestEvent.GithubUser sender = event.getSender();
+        Long userId = Optional.ofNullable(sender).map(GitHubPullRequestEvent.GithubUser::getId).orElse(null);
+        String username = Optional.ofNullable(sender).map(GitHubPullRequestEvent.GithubUser::getLogin).orElse(null);
 
-        // 构建统一的 MergeRequestEvent
+        // 拉取 diff 并保存到本地文件
+        String diffFilePath = fetchAndSaveDiff(fullName, repoName, pr.getNumber());
+
         MergeRequestEvent.MergeRequestAttributes attrs = MergeRequestEvent.MergeRequestAttributes.builder()
-                .id(pullRequest.getLong("id"))
-                .iid(pullRequest.getInteger("number"))
-                .title(pullRequest.getString("title"))
-                .description(pullRequest.getString("body"))
+                .id(pr.getId())
+                .iid(pr.getNumber())
+                .title(pr.getTitle())
+                .description(pr.getBody())
                 .sourceBranch(sourceBranch)
                 .targetBranch(targetBranch)
-                .state("opened") // 统一为 "opened" 格式
+                .state("opened")
                 .action(normalizedAction)
-                .url(pullRequest.getString("html_url"))
+                .url(pr.getHtmlUrl())
                 .sourceProjectId(repoId)
                 .targetProjectId(repoId)
                 .build();
@@ -111,18 +123,68 @@ public class GitHubWebhookHandler implements WebhookHandler {
                 .username(username)
                 .build();
 
-        MergeRequestEvent event = MergeRequestEvent.builder()
+        MergeRequestEvent mergeRequestEvent = MergeRequestEvent.builder()
                 .objectKind("merge_request")
                 .eventType("merge_request")
                 .objectAttributes(attrs)
                 .project(project)
                 .user(user)
+                .diffFilePath(diffFilePath)
                 .build();
 
-        log.info("解析 GitHub Pull Request 事件: repoId={}, number={}, action={}, title={}",
-                repoId, attrs.getIid(), normalizedAction, attrs.getTitle());
+        log.info("解析 GitHub Pull Request 事件: repoId={}, number={}, action={}, title={}, diffFilePath={}",
+                repoId, attrs.getIid(), normalizedAction, attrs.getTitle(), diffFilePath);
 
-        return event;
+        return mergeRequestEvent;
+    }
+
+    /**
+     * 拉取 PR diff 并保存到本地文件。
+     * <p>
+     * 文件命名规则：{repo}_{yyyyMMdd}_{pullNumber}.diff
+     * 存储路径：{diffLocalDir}/{fileName}
+     *
+     * @param fullName   仓库全名（owner/repo 格式），用于解析 owner 和 repo
+     * @param repoName   仓库名，用于文件命名
+     * @param pullNumber Pull Request 编号
+     * @return 本地文件路径字符串；若拉取失败则返回 null
+     */
+    private String fetchAndSaveDiff(String fullName, String repoName, Integer pullNumber) {
+        if (fullName == null || !fullName.contains("/") || pullNumber == null) {
+            log.warn("无法拉取 diff：fullName={}, pullNumber={}", fullName, pullNumber);
+            return null;
+        }
+
+        String[] parts = fullName.split("/", 2);
+        String owner = parts[0];
+        String repo = parts[1];
+
+        try {
+            String diffContent = gitHubApiService.fetchPullRequestDiff(owner, repo, pullNumber);
+
+            // 确保目录存在
+            Path dirPath = Paths.get(diffLocalDir);
+            if (!Files.exists(dirPath)) {
+                Files.createDirectories(dirPath);
+                log.info("创建 diff 目录: {}", dirPath.toAbsolutePath());
+            }
+
+            // {repo}_{yyyyMMdd}_{pullNumber}.diff
+            String date = LocalDate.now().format(DATE_FMT);
+            String fileName = String.format("%s_%s_%d.diff", repoName, date, pullNumber);
+            Path filePath = dirPath.resolve(fileName);
+
+            Files.writeString(filePath, diffContent, StandardCharsets.UTF_8);
+            log.info("diff 文件已保存: {}", filePath.toAbsolutePath());
+
+            return filePath.toString();
+        } catch (IOException e) {
+            log.error("保存 diff 文件失败: owner={}, repo={}, pullNumber={}", owner, repo, pullNumber, e);
+            return null;
+        } catch (Exception e) {
+            log.error("拉取 GitHub PR diff 失败: owner={}, repo={}, pullNumber={}", owner, repo, pullNumber, e);
+            return null;
+        }
     }
 
     /**

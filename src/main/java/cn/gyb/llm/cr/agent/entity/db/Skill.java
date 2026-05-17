@@ -42,8 +42,6 @@ public class Skill {
     /** 文件路径或URL */
     private String sourcePath;
 
-    /** 解析后的文本内容 */
-    private String content;
 
     /** 是否启用 (1=启用, 0=禁用) */
     private Integer enabled;

@@ -1,8 +1,10 @@
 package cn.gyb.llm.cr.agent.service;
 
 import cn.gyb.llm.cr.agent.entity.db.Skill;
+import cn.gyb.llm.cr.agent.skill.SkillMeta;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 技能管理服务接口
@@ -68,12 +70,30 @@ public interface SkillService {
     void refreshAllSkills();
 
     /**
-     * 获取所有已启用技能的合并规则文本
+     * 获取所有已启用技能的合并规则文本（兼容旧调用路径，不推荐新代码使用）
      * <p>
-     * 将所有已启用且已加载的技能内容拼接为一段完整的审查规则文本，
-     * 用于提供给 AI Agent 作为审查参考。
+     * 将所有已启用且已加载的技能内容拼接为一段完整的审查规则文本。
      *
      * @return 合并后的规则文本
      */
     String getAllActiveRulesAsText();
+
+    /**
+     * 从内存缓存中获取所有技能的元数据列表，供 Agent 第一阶段语义选择使用。
+     * <p>
+     * 仅返回 skillCode、skillName、description，不含完整规则内容，全程无数据库访问。
+     *
+     * @return 技能元数据列表，无已注册技能时返回空列表
+     */
+    List<SkillMeta> listSkillMeta();
+
+    /**
+     * 根据技能编码从内存缓存中获取完整规则内容，供 Agent 第二阶段按需加载。
+     * <p>
+     * 全程无数据库访问，技能不存在时返回空 Optional。
+     *
+     * @param skillCode 技能编码
+     * @return 技能完整规则内容
+     */
+    Optional<String> getSkillContentFromCache(String skillCode);
 }

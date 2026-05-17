@@ -87,14 +87,16 @@ public class CodeReviewAgent {
 
     /**
      * 对给定的 diff 内容执行代码审查。
+     * <p>
+     * Agent 会在推理过程中自主调用 listAvailableSkills / getSkillContent 工具，
+     * 根据 diff 涉及的语言动态选择并加载对应的编码规范，无需调用方预先注入规则。
      *
-     * @param diff  MR diff 内容
-     * @param rules 活跃的编码规则
+     * @param diff MR diff 内容
      * @return 审查结果
      */
-    public ReviewResult review(String diff, String rules) {
+    public ReviewResult review(String diff) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(CodeReviewPrompts.getSystemPrompt(rules)));
+        messages.add(new SystemMessage(CodeReviewPrompts.getSystemPrompt()));
         messages.add(new UserMessage("<diff>\n" + diff + "\n</diff>"));
 
         int round = 0;
@@ -113,7 +115,7 @@ public class CodeReviewAgent {
                     .chatClientResponse();
 
             String aiText = response.chatResponse().getResult().getOutput().getText();
-            log.debug("AI 响应文本长度: {}", aiText != null ? aiText.length() : 0);
+            log.info("AI 响应: {}", aiText);
 
             // 没有工具调用 = 最终答案
             if (!response.chatResponse().hasToolCalls()) {
@@ -138,7 +140,7 @@ public class CodeReviewAgent {
                 try {
                     Object result = callback.call(toolCall.arguments());
                     String resultStr = Objects.toString(result, "");
-                    log.debug("工具 {} 返回结果长度: {}", toolCall.name(), resultStr.length());
+                    log.info("工具 {} 返回结果长度: {}", toolCall.name(), resultStr.length());
                     messages.add(ToolResponseMessage.builder()
                             .responses(List.of(new ToolResponseMessage.ToolResponse(
                                     toolCall.id(), toolCall.name(), resultStr)))

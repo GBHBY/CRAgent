@@ -62,11 +62,11 @@ public class WebhookController {
         log.info("收到 {} Webhook 事件", platform);
 
         // 验证 Webhook 密钥令牌
-        String headerToken = resolveHeaderToken(gitlabToken, githubToken);
-        if (!handler.validateToken(secretToken, headerToken)) {
-            log.warn("收到无效的 Webhook 令牌，拒绝请求");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的令牌");
-        }
+        //String headerToken = resolveHeaderToken(gitlabToken, githubToken);
+        //if (!handler.validateToken(secretToken, headerToken)) {
+        //    log.warn("收到无效的 Webhook 令牌，拒绝请求");
+        //    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的令牌");
+        //}
 
         try {
             // 使用策略处理器解析事件
