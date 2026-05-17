@@ -4,6 +4,7 @@ import cn.gyb.llm.cr.agent.entity.db.Skill;
 import cn.gyb.llm.cr.agent.mapper.SkillMapper;
 import cn.gyb.llm.cr.agent.service.SkillService;
 import cn.gyb.llm.cr.agent.skill.SkillLoader;
+import cn.gyb.llm.cr.agent.skill.SkillMeta;
 import cn.gyb.llm.cr.agent.skill.SkillRegistry;
 import cn.gyb.llm.cr.agent.skill.SkillType;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 技能（编码规范）服务实现，提供技能的 CRUD 操作和内容刷新功能。
@@ -70,7 +72,6 @@ public class SkillServiceImpl implements SkillService {
         SkillLoader loader = findLoader(SkillType.valueOf(skill.getSkillType()));
         String content = loader.loadContent(skill.getSourcePath());
 
-        skill.setContent(content);
         skill.setVersion(1);
         skill.setEnabled(1);
         skill.setLastRefreshedAt(LocalDateTime.now());
@@ -80,7 +81,8 @@ public class SkillServiceImpl implements SkillService {
         skillMapper.insert(skill);
 
         if (skill.getEnabled() == 1) {
-            skillRegistry.register(skill.getSkillCode(), skill.getVersion(), content);
+            skillRegistry.register(skill.getSkillCode(), skill.getVersion(),
+                    skill.getSkillName(), skill.getDescription(), content);
         }
 
         log.info("添加技能: {}, type={}, version={}", skill.getSkillCode(), skill.getSkillType(), skill.getVersion());
@@ -153,7 +155,6 @@ public class SkillServiceImpl implements SkillService {
         String content = loader.loadContent(skill.getSourcePath());
 
         int newVersion = skill.getVersion() + 1;
-        skill.setContent(content);
         skill.setVersion(newVersion);
         skill.setLastRefreshedAt(LocalDateTime.now());
         skill.setUpdatedAt(LocalDateTime.now());
@@ -161,7 +162,8 @@ public class SkillServiceImpl implements SkillService {
         skillMapper.updateById(skill);
 
         if (skill.getEnabled() == 1) {
-            skillRegistry.register(skill.getSkillCode(), newVersion, content);
+            skillRegistry.register(skill.getSkillCode(), newVersion,
+                    skill.getSkillName(), skill.getDescription(), content);
         }
 
         log.info("刷新技能: {}, 新版本={}", skill.getSkillCode(), newVersion);
@@ -190,13 +192,34 @@ public class SkillServiceImpl implements SkillService {
     }
 
     /**
-     * 获取所有活跃编码规范的文本内容。
+     * 获取所有活跃编码规范的文本内容（兼容旧调用路径）。
      *
      * @return 所有已注册编码规则的合并文本
      */
     @Override
     public String getAllActiveRulesAsText() {
         return skillRegistry.getRulesText();
+    }
+
+    /**
+     * 从内存缓存中获取所有技能的元数据列表。
+     *
+     * @return 技能元数据列表
+     */
+    @Override
+    public List<SkillMeta> listSkillMeta() {
+        return skillRegistry.listSkillMeta();
+    }
+
+    /**
+     * 根据技能编码从内存缓存中获取完整规则内容。
+     *
+     * @param skillCode 技能编码
+     * @return 技能完整规则内容
+     */
+    @Override
+    public Optional<String> getSkillContentFromCache(String skillCode) {
+        return skillRegistry.getContent(skillCode);
     }
 
     /**

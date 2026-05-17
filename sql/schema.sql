@@ -1,6 +1,6 @@
 -- GitLab CR Agent 数据库 Schema
 
-CREATE DATABASE IF NOT EXISTS gitlab_cr DEFAULT CHARSET utf8mb4;
+CREATE DATABASE IF NOT EXISTS cr_agent DEFAULT CHARSET utf8mb4;
 USE gitlab_cr;
 
 -- 编码规范 Skill

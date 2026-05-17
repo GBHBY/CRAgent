@@ -82,15 +82,17 @@ public class FullScanAgent {
 
     /**
      * 对给定项目和分支执行全量扫描。
+     * <p>
+     * Agent 会在推理过程中自主调用 listAvailableSkills / getSkillContent 工具，
+     * 根据项目涉及的语言动态选择并加载对应的编码规范，无需调用方预先注入规则。
      *
      * @param projectId GitLab 项目 ID
      * @param branch    要扫描的分支
-     * @param rules     活跃的编码规则
      * @return 扫描结果
      */
-    public ReviewResult scan(Long projectId, String branch, String rules) {
+    public ReviewResult scan(Long projectId, String branch) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(FullScanPrompts.getSystemPrompt(rules)));
+        messages.add(new SystemMessage(FullScanPrompts.getSystemPrompt()));
         messages.add(new UserMessage(String.format(
                 "请对项目进行全面代码扫描。\n项目 ID: %d\n分支: %s\n请先列出项目文件，然后逐个读取并审查每个文件。",
                 projectId, branch)));

@@ -1,2 +1,7 @@
 /.idea/
 /target/
+/src/main/resources/application-company.yml
+/src/main/resources/application-home.yml
+/logs/
+/diff/
+/src/main/resources/doc/

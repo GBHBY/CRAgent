@@ -32,6 +32,10 @@ spring:
   mybatis-plus:
     mapper-locations: classpath:mapper/*.xml
 
+# Webhook 平台配置 (支持: gitlab, github)
+webhook:
+  platform: gitlab
+
 # GitLab 配置
 gitlab:
   api:
@@ -41,6 +45,16 @@ gitlab:
     secret-token: your-webhook-secret
   review:
     target-branches: pre-release,main
+
+# GitHub 配置
+github:
+  api:
+    url: https://api.github.com
+    token: your-github-token
+  webhook:
+    secret-token: your-webhook-secret
+  review:
+    target-branches: main,master
 
 # 钉钉配置
 dingtalk:
@@ -60,8 +74,3 @@ skill:
   refresh-interval: 300000
   storage-path: ./skills
 
-logging:
-  level:
-    cn.hollis.llm.cr.agent: DEBUG
-    org.springframework.ai: INFO
-    io.modelcontextprotocol.client: ERROR

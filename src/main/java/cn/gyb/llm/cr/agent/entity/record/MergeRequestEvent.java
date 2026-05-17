@@ -33,6 +33,15 @@ public class MergeRequestEvent {
     private User user;
 
     /**
+     * diff 文件本地路径
+     * <p>
+     * Handler 层拉取 diff 后保存到本地文件，将路径写入此字段。
+     * ReviewService 直接读取此路径的文件内容送给 LLM，无需再次调用平台 API。
+     * 格式示例：./diff/CRAgent_20260516_2.diff
+     */
+    private String diffFilePath;
+
+    /**
      * 合并请求属性
      * <p>
      * 包含合并请求的详细属性信息，如标题、分支、状态等。

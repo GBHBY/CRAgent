@@ -2,6 +2,7 @@ package cn.gyb.llm.cr.agent.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.zhipuai.ZhiPuAiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,7 +22,7 @@ public class ChatClientConfig {
      * @return 构建好的 ChatClient 实例
      */
     @Bean
-    public ChatClient chatClient(ChatModel chatModel) {
+    public ChatClient chatClient(ZhiPuAiChatModel chatModel) {
         return ChatClient.builder(chatModel).build();
     }
 }
