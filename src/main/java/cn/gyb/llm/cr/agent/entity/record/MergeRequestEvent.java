@@ -33,6 +33,15 @@ public class MergeRequestEvent {
     private User user;
 
     /**
+     * 来源平台标识
+     * <p>
+     * 标识事件来自哪个代码托管平台，如 "gitlab"、"github"。
+     * 由各 WebhookHandler 实现在 parseEvent 时设置，
+     * 下游 ReviewService 用于选择对应的评论回写策略。
+     */
+    private String platform;
+
+    /**
      * diff 文件本地路径
      * <p>
      * Handler 层拉取 diff 后保存到本地文件，将路径写入此字段。

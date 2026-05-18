@@ -2,6 +2,8 @@ package cn.gyb.llm.cr.agent.service;
 
 import cn.gyb.llm.cr.agent.agent.CodeReviewAgent;
 import cn.gyb.llm.cr.agent.agent.FullScanAgent;
+import cn.gyb.llm.cr.agent.comment.ReviewCommentHandler;
+import cn.gyb.llm.cr.agent.comment.ReviewCommentHandlerRegistry;
 import cn.gyb.llm.cr.agent.common.ReviewIssue;
 import cn.gyb.llm.cr.agent.common.ReviewResult;
 import cn.gyb.llm.cr.agent.common.ReviewVerdict;
@@ -55,6 +57,9 @@ public class ReviewService {
 
     @Autowired
     private GitHubApiService gitHubApiService;
+
+    @Autowired
+    private ReviewCommentHandlerRegistry reviewCommentHandlerRegistry;
 
     @Autowired
     private DiffParserService diffParserService;
@@ -156,11 +161,21 @@ public class ReviewService {
 
             log.info("审查完成: result={}", result);
 
-            // 步骤7: 处理结果（按平台分发回写评论）
-            //String pathWithNamespace = project != null ? project.getPathWithNamespace() : null;
-            //processReviewResult(task, result, projectId, mrIid.longValue(),
-            //        mrTitle, mrUrl, author, sourceBranch, targetBranch, projectName,
-            //        isGitHub, pathWithNamespace, mrIid);
+            // 步骤7: 通过策略模式按平台回写评论
+            String eventPlatform = event.getPlatform();
+            if (eventPlatform != null) {
+                ReviewCommentHandler commentHandler = reviewCommentHandlerRegistry.getHandler(eventPlatform);
+                if (commentHandler != null) {
+                    try {
+                        commentHandler.postReviewComment(event, result);
+                        log.info("评论回写完成: platform={}, projectId={}, mrIid={}", eventPlatform, projectId, mrIid);
+                    } catch (Exception e) {
+                        log.warn("评论回写失败: platform={}, error={}", eventPlatform, e.getMessage());
+                    }
+                }
+            } else {
+                log.warn("事件中未设置 platform 字段，跳过评论回写");
+            }
 
         } catch (Exception e) {
             log.error("审查失败: projectId={}, MR={}", projectId, mrIid, e.getMessage(), e);
