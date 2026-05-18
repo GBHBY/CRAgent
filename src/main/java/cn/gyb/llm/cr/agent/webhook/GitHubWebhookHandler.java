@@ -130,6 +130,7 @@ public class GitHubWebhookHandler implements WebhookHandler {
                 .project(project)
                 .user(user)
                 .diffFilePath(diffFilePath)
+                .platform(platformType())
                 .build();
 
         log.info("解析 GitHub Pull Request 事件: repoId={}, number={}, action={}, title={}, diffFilePath={}",

@@ -63,6 +63,9 @@ public class GitLabWebhookHandler implements WebhookHandler {
             return null;
         }
 
+        // 设置平台标识
+        event.setPlatform(platformType());
+
         log.info("解析 GitLab 合并请求事件: projectId={}, iid={}, action={}, title={}",
                 event.getProject() != null ? event.getProject().getId() : "unknown",
                 attrs.getIid(),
